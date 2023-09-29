@@ -1,0 +1,63 @@
+from datetime import datetime, timedelta
+
+def parse_date(date_str):
+    return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+
+def check_consecutive_days(records):
+    consecutive_days = 0
+    for record in records:
+        date = parse_date(record['date'])
+        if not hasattr(check_consecutive_days, 'prev_date'):
+            check_consecutive_days.prev_date = date
+            consecutive_days = 1
+        else:
+            if (date - check_consecutive_days.prev_date).days == 1:
+                consecutive_days += 1
+                if consecutive_days == 7:
+                    return True
+            else:
+                consecutive_days = 0
+            check_consecutive_days.prev_date = date
+    return False
+
+def check_short_break(records):
+    for i in range(len(records) - 1):
+        current_time = parse_date(records[i]['time_out'])
+        next_time = parse_date(records[i+1]['time_in'])
+        time_diff = (next_time - current_time).seconds / 3600  # in hours
+        if 1 < time_diff < 10:
+            return True
+    return False
+
+def check_long_shift(records):
+    total_hours = 0
+    for record in records:
+        time_in = parse_date(record['time_in'])
+        time_out = parse_date(record['time_out'])
+        shift_hours = (time_out - time_in).seconds / 3600
+        total_hours += shift_hours
+        if total_hours > 14:
+            return True
+    return False
+
+def main(file_path):
+    with open(file_path, 'r') as file:
+        data = file.read()
+
+    records = [line.split(',') for line in data.strip().split('\n')]
+    header = records[0]
+    records = [dict(zip(header, record)) for record in records[1:]]
+
+    for record in records:
+        if check_consecutive_days(records):
+            print(f"Employee: {record['name']}, Position: {record['position']} (Worked 7 consecutive days)")
+
+        if check_short_break(records):
+            print(f"Employee: {record['name']}, Position: {record['position']} (Less than 10 hours between shifts)")
+
+        if check_long_shift(records):
+            print(f"Employee: {record['name']}, Position: {record['position']} (Worked more than 14 hours in a single shift)")
+
+if __name__ == "__main__":
+    file_path = input("Enter the path to the file: ")
+    main(file_path)
